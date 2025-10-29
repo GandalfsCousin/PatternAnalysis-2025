@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
 from tqdm import tqdm
 
 from modules import small_model, custom_model
@@ -16,8 +17,7 @@ class Config:
     epochs = 50
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     learningRate = 5e-4
-    weightDecay = 0.05
-    warmupEpochs = 5
+    weightDecay = 0.1
     saveDir = "checkpoints"
 
 
@@ -78,7 +78,7 @@ def validate(model, loader, criterion, device):
 
 
 def main():
-    train_dataset = ADNI_Loader(Config.dataRoot, split="train", transform=Transforms.train_transform)
+    train_dataset = ADNI_Loader(Config.dataRoot, split="train", transform=Transforms.aggressive_train_transform)
     test_dataset = ADNI_Loader(Config.dataRoot, split="test", transform=Transforms.test_transform)
     print(f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}")
 
@@ -86,17 +86,23 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=Config.batchSize, shuffle=False, pin_memory=True, num_workers=6)
     
 
-    model = small_model().to(Config.device)
-    criterion = nn.CrossEntropyLoss()
+    model = custom_model().to(Config.device)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=Config.learningRate, weight_decay=Config.weightDecay)
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=Config.epochs)
+    warmup = LinearLR(optimizer, start_factor=0.1, total_iters=5)
+    cosine = CosineAnnealingLR(optimizer, T_max=Config.epochs - 5)
+    scheduler = SequentialLR(optimizer, 
+                            schedulers=[warmup, cosine], 
+                            milestones=[5])
 
     best_acc = 0.0
 
     for epoch in range(Config.epochs):
+        print(f"===== Epoch {epoch+1}/{Config.epochs} =====")
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, Config.device)
         val_loss, val_acc = validate(model, test_loader, criterion, Config.device)
+        
         scheduler.step()
         current_lr = optimizer.param_groups[0]['lr']
 
@@ -106,6 +112,7 @@ def main():
 
         if val_acc > best_acc:
             best_acc = val_acc
+            print(f"  Saving best model with accuracy: {best_acc:.2f}%")
 
             torch.save({
                 'epoch': epoch,
