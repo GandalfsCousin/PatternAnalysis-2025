@@ -88,16 +88,21 @@ def main():
 
     model = small_model().to(Config.device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=Config.learningRate, weight_decay=Config.weightDecay)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=Config.learningRate, weight_decay=Config.weightDecay)
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=Config.epochs)
 
     best_acc = 0.0
 
     for epoch in range(Config.epochs):
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, Config.device)
         val_loss, val_acc = validate(model, test_loader, criterion, Config.device)
+        scheduler.step()
+        current_lr = optimizer.param_groups[0]['lr']
 
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
         print(f"  Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc:.2f}%")
+        print(f"  LR: {current_lr:.6f}\n")
 
         if val_acc > best_acc:
             best_acc = val_acc
