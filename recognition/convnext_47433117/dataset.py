@@ -92,7 +92,10 @@ class Transforms:
         transforms.RandomApply([transforms.GaussianBlur(3, sigma=(0.1, 2.0))], p=0.3),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0),
     ])
+
+    
     
     test_transform = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),  
