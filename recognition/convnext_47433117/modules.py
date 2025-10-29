@@ -28,6 +28,7 @@ class Block(nn.Module):
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
+
     def forward(self, x):
         """ Forward pass of the block, as definied in  facebookresearch/ConvNeXt suplementray code"""
         input = x
@@ -165,13 +166,27 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
     def norm_cdf(x):
         return (1. + math.erf(x / math.sqrt(2.))) / 2. #normal cumulative distribution
 
-    l = norm_cdf((a - mean) / std)
-    u = norm_cdf((b - mean) / std)
+    with torch.no_grad():
+        l = norm_cdf((a - mean) / std)
+        u = norm_cdf((b - mean) / std)
 
-    tensor.uniform_(2 * l - 1, 2 * u - 1) # fill tensor
-    tensor.erfinv_()
+        tensor.uniform_(2 * l - 1, 2 * u - 1)
+        tensor.erfinv_()
 
-    tensor.mul_(std * math.sqrt(2.))
-    tensor.add_(mean)
-    tensor.clamp_(min=a, max=b)
-    return tensor
+        tensor.mul_(std * math.sqrt(2.))
+        tensor.add_(mean)
+        tensor.clamp_(min=a, max=b)
+        return tensor
+
+
+
+
+def small_model(drop_path_rate=0, layer_scale_init_value=1e-6, head_init_scale=1):
+    """ Creates a Small ConvNeXt model, as is better for our dataset."""
+    return ConvNeXt(
+        depths=[3, 3, 27, 3], 
+        dims=[96, 192, 384, 768],
+        drop_path_rate=drop_path_rate, 
+        layer_scale_init_value=layer_scale_init_value, 
+        head_init_scale=head_init_scale,
+        )   
