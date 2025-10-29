@@ -64,35 +64,36 @@ class ADNI_Loader(Dataset):
 class Transforms:
     """ Wrapper class holding transforms for the dataset"""
 
-    basic_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5])
-    ])
-
     train_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-
-            transforms.Resize((256, 256)),
-            transforms.RandomResizedCrop(224, scale=(0.95, 1.0)),
-
-            
-            transforms.RandomAffine(
-                degrees=5,
-                translate=(0.02, 0.02),
-                scale=(0.95, 1.05),
-            ),
-
-            transforms.ColorJitter(
-                brightness=0.1, contrast=0.1
-            ),
-
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]
-            ),
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((256, 256)),
+        transforms.RandomResizedCrop(224, scale=(0.95, 1.0)),
+        transforms.RandomAffine(
+            degrees=5,
+            translate=(0.02, 0.02),
+            scale=(0.95, 1.05),
+        ),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
     ])
 
+    aggressive_train_transform = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((256, 256)),
+        transforms.RandomResizedCrop(224, scale=(0.85, 1.0)),
+        transforms.RandomAffine(
+            degrees=10,
+            translate=(0.05, 0.05),
+            scale=(0.9, 1.1),
+        ),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        transforms.RandomApply([transforms.GaussianBlur(3, sigma=(0.1, 2.0))], p=0.3),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    ])
+    
     test_transform = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),  
         transforms.Resize((224, 224)), 
@@ -104,7 +105,7 @@ class Transforms:
 
 
 if __name__ == "__main__":
-    dataset = ADNI_Loader(root="recognition/convnext_47433117/ADNI/AD_NC", split="test", transform=Transforms.basic_transform)
+    dataset = ADNI_Loader(root="recognition/convnext_47433117/ADNI/AD_NC", split="test", transform=Transforms.test_transform)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=2)
 
     for images, labels in dataloader:
