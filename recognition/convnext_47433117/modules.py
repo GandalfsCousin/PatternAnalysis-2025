@@ -62,12 +62,13 @@ class ConvNeXt(nn.Module):
     def __init__(self, in_chans=3, num_classes=2, 
                  depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], drop_path_rate=0., 
                  layer_scale_init_value=1e-6, head_init_scale=1.,
+                 first_conv_stride=4,
                  ):
         super().__init__()
 
         self.downsample_layers = nn.ModuleList() # stem and 3 intermediate downsampling conv layers
         stem = nn.Sequential(
-            nn.Conv2d(in_chans, dims[0], kernel_size=4, stride=4),
+            nn.Conv2d(in_chans, dims[0], kernel_size=4, stride=first_conv_stride),
             LayerNorm(dims[0], eps=1e-6, data_format="channels_first")
         )
         self.downsample_layers.append(stem)
@@ -90,11 +91,17 @@ class ConvNeXt(nn.Module):
             cur += depths[i]
 
         self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
-        self.head = nn.Linear(dims[-1], num_classes)
+        self.head = nn.Sequential(
+            nn.LayerNorm(dims[-1], eps=1e-6),
+            nn.Dropout(0.4),
+            nn.Linear(dims[-1], num_classes)
+        )
 
         self.apply(self._init_weights)
-        self.head.weight.data.mul_(head_init_scale)
-        self.head.bias.data.mul_(head_init_scale)
+        linear_layer: nn.Linear = self.head[-1]  # type: ignore
+        linear_layer.weight.data.mul_(head_init_scale)
+        linear_layer.bias.data.mul_(head_init_scale)
+
 
     def _init_weights(self, m):
         if isinstance(m, (nn.Conv2d, nn.Linear)):
@@ -181,10 +188,21 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 
 
-def small_model(drop_path_rate=0, layer_scale_init_value=1e-6, head_init_scale=1):
+def small_model(drop_path_rate=0.15, layer_scale_init_value=1e-6, head_init_scale=1):
     """ Creates a Small ConvNeXt model, as is better for our dataset."""
     return ConvNeXt(
         depths=[3, 3, 27, 3], 
+        dims=[96, 192, 384, 768],
+        drop_path_rate=drop_path_rate, 
+        layer_scale_init_value=layer_scale_init_value, 
+        head_init_scale=head_init_scale,
+        )   
+
+
+def custom_model(drop_path_rate=0.25, layer_scale_init_value=1e-6, head_init_scale=1):
+    """ Creates a custom ConvNeXt model, as is better for our dataset."""
+    return ConvNeXt(
+        depths=[3, 3, 18, 3],
         dims=[96, 192, 384, 768],
         drop_path_rate=drop_path_rate, 
         layer_scale_init_value=layer_scale_init_value, 
