@@ -65,7 +65,7 @@ class ConvNeXt(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, (nn.Linear, nn.Conv2d)):
             trunc_normal_(m.weight, std=.02)
-            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.bias, 0) # type: ignore
 
     def forward_features(self, x):
         for i in range(4):
