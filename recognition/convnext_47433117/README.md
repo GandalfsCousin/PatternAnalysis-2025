@@ -4,7 +4,7 @@
 
 ## Overview
 
-The problem at hand was the classification of MRI brainscan images in the ADNI dataset; this dataset contains sliced MRI brain scans, labeled Alzheimer's disease (AD) and normal control (NC). For this, a ConvNeXt classification model was implemented, this is a convolutional network adapted from ResNet50 and the Swin Transformer. This allows the model to improve over the ResNet50 in image recognitions tasks and led to it being implemented for tasks such as medical imaging classifaction. Using this, a model was implemented to acheive xx accuracy on the test set.
+The problem at hand was the classification of MRI brainscan images in the ADNI dataset; this dataset contains sliced MRI brain scans, labeled Alzheimer's disease (AD) and normal control (NC). For this, a ConvNeXt classification model was implemented, this is a convolutional network adapted from ResNet50 and the Swin Transformer. This allows the model to improve over the ResNet50 in image recognitions tasks and led to it being implemented for tasks such as medical imaging classifaction. Using this, a model was implemented to acheive 77.23\% accuracy on the test set.
 
 ## Dependencies
 - Python 3.12.7
@@ -201,12 +201,19 @@ This learning rate scheduler was used to gradually decreases the learning rate f
 
 ## Results
 
-Using the above defined model in `modules.py` and the training script in `train.py`, the model was able to prodice a 77.68\% accuracy on the test data set, the model was produced after x epochs, after which, the valedation loss stagnated and started to fall, whil the test loss continued to rise. This suggests the model was overfitting despite the harsh regularization and training transforms.
+Using the above defined model in `modules.py` and the training script in `train.py`, the model was able to prodice a 77.23\% accuracy on the test data set, the model was produced after x epochs, after which, the valedation loss stagnated and started to fall, whil the test loss continued to rise. This suggests the model was overfitting despite the harsh regularization and training transforms.
 
 Additional performance metrics:  
-- Precision: 0.75  
-- Recall: 0.78  
-- F1-score: 0.76
+- Precision: 0.8003
+- Recall:    0.7784
+- F1-score:  0.7734
+  
+Confusion Matrix:
+| True\Pred | AD    | NC    |
+|-----------|-------|-------|
+| AD        | 2801  | 1659  |
+| NC        | 390   | 4150  |
+
 
 ## Inference
 
