@@ -8,21 +8,13 @@ import matplotlib.pyplot as plt
 from modules import custom_model, custom_small
 from dataset import ADNI_Loader, Transforms
 import numpy as np
+import argparse
 
-os.makedirs("checkpoints", exist_ok=True)
-
-class Config:
-    dataRoot = "recognition/convnext_47433117/ADNI/AD_NC"
-    batchSize = 32
-    epochs = 50
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    learningRate = 4e-4
-    weightDecay = 0.05
-    dropPathRate = 0.25
-    classifierDropout = 0.3
-    labelSmoothing = 0.02
-    saveDir = "checkpoints"
-
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train ConvNeXt on ADNI dataset")
+    parser.add_argument('--data_root', type=str, default="recognition/convnext_47433117/ADNI/AD_NC", help='Path to ADNI dataset root')
+    parser.add_argument('--save_dir', type=str, default='recognition/convnext_47433117/checkpoints', help='Directory to save checkpoints')
+    return parser.parse_args()
 
 def train_val_split(dataset, val_ratio=0.1):
     unique_patients = np.unique(dataset.patient_ids)
@@ -36,7 +28,6 @@ def train_val_split(dataset, val_ratio=0.1):
     val_idx = [i for i, pid in enumerate(dataset.patient_ids) if pid in val_patients]
 
     return Subset(dataset, train_idx), Subset(dataset, val_idx)
-
 
 def train_epoch(model, loader, criterion, optimizer, scaler, device):
     model.train()
@@ -74,8 +65,6 @@ def validate(model, loader, criterion, device):
             loop.set_postfix(loss=loss.item(), acc=100.*correct/total)
     return running_loss / total, 100.*correct/total
 
-
-
 def plot_metrics(train_losses, val_losses, lrs, save_dir):
     epochs = range(1, len(train_losses)+1)
 
@@ -102,28 +91,38 @@ def plot_metrics(train_losses, val_losses, lrs, save_dir):
     plt.savefig(os.path.join(save_dir, 'lr_curve.png'), dpi=300)
     plt.close()
 
-
-
 def main():
-    dataset = ADNI_Loader(Config.dataRoot, split="train", transform=Transforms.train_transform)
+    args = parse_args()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    os.makedirs(args.save_dir, exist_ok=True)
+
+    batch_size = 32
+    epochs = 50
+    learning_rate = 4e-4
+    weight_decay = 0.05
+    drop_path_rate = 0.25
+    classifier_dropout = 0.3
+    label_smoothing = 0.02
+
+    dataset = ADNI_Loader(args.data_root, split="train", transform=Transforms.train_transform)
     train_subset, val_subset = train_val_split(dataset)
 
-    train_loader = DataLoader(train_subset, batch_size=Config.batchSize, shuffle=True, num_workers=6)
-    val_loader = DataLoader(val_subset, batch_size=Config.batchSize, shuffle=False, num_workers=6)
+    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True, num_workers=6)
+    val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False, num_workers=6)
 
-    model = custom_small(drop_path_rate=Config.dropPathRate, classifier_dropout=Config.classifierDropout).to(Config.device)
-    criterion = nn.CrossEntropyLoss(label_smoothing=Config.labelSmoothing)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=Config.learningRate, weight_decay=Config.weightDecay)
-    scheduler = CosineAnnealingLR(optimizer, T_max=Config.epochs)
+    model = custom_small(drop_path_rate=drop_path_rate, classifier_dropout=classifier_dropout).to(device)
+    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
     scaler = torch.amp.GradScaler('cuda')
 
     best_acc = 0.0
     train_losses, val_losses, lrs = [], [], []
 
-    for epoch in range(Config.epochs):
-        print(f"\n===== Epoch {epoch+1}/{Config.epochs} | LR: {optimizer.param_groups[0]['lr']:.6f} =====")
-        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, scaler, Config.device)
-        val_loss, val_acc = validate(model, val_loader, criterion, Config.device)
+    for epoch in range(epochs):
+        print(f"\n===== Epoch {epoch+1}/{epochs} | LR: {optimizer.param_groups[0]['lr']:.6f} =====")
+        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, scaler, device)
+        val_loss, val_acc = validate(model, val_loader, criterion, device)
         scheduler.step()
         lrs.append(optimizer.param_groups[0]['lr'])
 
@@ -135,9 +134,9 @@ def main():
 
         if val_acc > best_acc:
             best_acc = val_acc
-            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict()}, os.path.join(Config.saveDir, 'best_model.pth'))
+            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict()}, os.path.join(args.save_dir, 'best_model.pth'))
 
-    plot_metrics(train_losses, val_losses, lrs, Config.saveDir)
+    plot_metrics(train_losses, val_losses, lrs, args.save_dir)
     print(f"\nTraining complete! Best Val Accuracy: {best_acc:.2f}%")
 
 if __name__=="__main__":
