@@ -30,6 +30,7 @@ class ADNI_Loader(Dataset):
         self.label_map = {"AD": 0, "NC": 1}
 
         self.samples = []
+        self.patient_ids = []
 
         for class_name in self.classes:
             class_dir = self.dir / class_name
@@ -40,6 +41,8 @@ class ADNI_Loader(Dataset):
             for img_path in sorted(class_dir.iterdir()):
                 self.samples.append((img_path, self.label_map[class_name]))
 
+                patient_id = img_path.stem.split("_")[0]
+                self.patient_ids.append(patient_id)
 
     def __len__(self) -> int:
         """Returns length of dataset"""
