@@ -36,7 +36,7 @@ def train_epoch(model, loader, criterion, optimizer, scaler, device):
     for images, labels in loop:
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad(set_to_none=True)
-        with torch.amp.autocast('cuda'):
+        with torch.amp.autocast('cuda'): #type: ignore
             outputs = model(images)
             loss = criterion(outputs, labels)
         scaler.scale(loss).backward()
@@ -52,7 +52,7 @@ def train_epoch(model, loader, criterion, optimizer, scaler, device):
 def validate(model, loader, criterion, device):
     model.eval()
     total, correct, running_loss = 0, 0, 0
-    with torch.no_grad(), torch.amp.autocast('cuda'):
+    with torch.no_grad(), torch.amp.autocast('cuda'): #type: ignore
         loop = tqdm(loader, desc="Validation", leave=True)
         for images, labels in loop:
             images, labels = images.to(device), labels.to(device)
@@ -114,7 +114,7 @@ def main():
     criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
-    scaler = torch.amp.GradScaler('cuda')
+    scaler = torch.amp.GradScaler('cuda') #type: ignore
 
     best_acc = 0.0
     train_losses, val_losses, lrs = [], [], []
