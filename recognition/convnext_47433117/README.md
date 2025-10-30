@@ -70,23 +70,23 @@ Table 3: Training transformation configuration used
 | ----- | ----- |
 |**Grayscale**| (num_output_channels=3 |
 |**Resize**| 224x224|
-|**RandomResizedCrop**|224, scale=(0.95, 1.0)|
-|**RandomAffine**|degrees=5, translate=(0.02, 0.02), scale=(0.95, 1.05)|
+|**RandomResizedCrop**|224, scale=(0.9, 1.0)|
+|**RandomAffine**|degrees=5, translate=(0.05, 0.05), scale=(0.95, 1.05)|
 |**RandomHorizontalFlip**|p=0.5|
-|**ColorJitter**|brightness=0.1, contrast=0.1|
+|**ColorJitter**|brightness=0.15, contrast=0.15|
 |**Normalize**|mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]|
 
 Grayscaling to 3 channels was applied to transform the image into a 'psuedo-RGB' image, as used in the original ConvNeXt paper, in order to allow the model to extract more information from the input image.
 
 Resize was applied to reshape the image to 224x224 to scale better with the pareamteres of the ConvNeXt model.
 
-RandomResizedCrop was applied to to this image then scaled back to 224x224, as it keeps 95% of the image still, this was used to move the brain section of the MRI off centre in hopes the model would memorise shapes of the data not pixel locations.
+RandomResizedCrop was applied to to this image then scaled back to 224x224, as it keeps 90% of the image still, this was used to move the brain section of the MRI off centre in hopes the model would memorise shapes of the data not pixel locations.
 
-RandomAffine was applied to slightly alter the image while keeping the shape of the data. Degrees=5 rotates the image $\in [-5^{\circ}, 5 ^{\circ}]$, translate=(0.02, 0.02) shifted the image vertically or horizontally within a 2\% range based on the width and height, and scale=(0.95, 1.05) zoomed the image within 5% of the original image, while keeping the 244x244 shape.
+RandomAffine was applied to slightly alter the image while keeping the shape of the data. Degrees=5 rotates the image $\in [-5^{\circ}, 5 ^{\circ}]$, translate=(0.05, 0.05) shifted the image vertically or horizontally within a 5\% range based on the width and height, and scale=(0.95, 1.05) zoomed the image within 5% of the original image, while keeping the 244x244 shape.
 
 RandomHorizontalFlip was applied to flip the image horazontally 50\% of the time.
 
-ColorJitter was applied to slightly chnage the range of the greyscale channels, brightness=0.1 randomly scaled all pixel values within 10\%, and contrast=0.1 randomly scaled the contrast of the image within 10\%. This effectively moved and scaled the pixel values fo prevent the model from just learning intenisties.
+ColorJitter was applied to slightly chnage the range of the greyscale channels, brightness=0.15 randomly scaled all pixel values within 15\%, and contrast=0.15 randomly scaled the contrast of the image within 15\%. This effectively moved and scaled the pixel values fo prevent the model from just learning intenisties.
 
 Finally, Normalize was use to bring all channels back to a mean and standard deviation of 0.5.
 
@@ -103,7 +103,20 @@ Table 4: Test transformation configuration used
 
 ### Training Configuration
 
+To train the model, fee configriable settings were chosen to give the model the best chance of reaching a high accuracy. 
 
+```criterion = nn.CrossEntropyLoss(label_smoothing=Config.labelSmoothing) ```
+
+This is the most common loss function for multi-class classification tasks, measuring performance of a classification model whose output is a probability distribution over C classes. It was chosen due to its reliability and proir use in ConvNeXt training, inidcating relieable results.
+Labale Smoothing was used as a regularization technique to discourage overconfidence, by altering a hard target label (binary) to a soft target label (porbabilistic), and was used to battle overfitting in the model.
+
+```optimizer = torch.optim.AdamW(model.parameters(), lr=Config.learningRate, weight_decay=Config.weightDecay)```
+
+This is an an improved version of the Adam optimizer that decouples the weight decay term from the gradient update, which generally leads to better performance, especially in models with many parameters. The Learning Rate (lr) determines the step size taken in the direction of the negative gradient during optimization, and the weight_decay adds another regularization term (L2 regularization) that penalizes large weights in the model; This was done to help prevent overfitting.
+
+```scheduler = CosineAnnealingLR(optimizer, T_max=Config.epochs)```
+
+This learning rate scheduler was used to gradually decreases the learning rate from the initial value to almost zero following a cosine curve over the duration of the training, as specified by T_max, allowing the model to take smaller steps the closer it gets to the local minima during optimization.
 
 ## Results
 
