@@ -91,16 +91,11 @@ class ConvNeXt(nn.Module):
             cur += depths[i]
 
         self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
-        self.head = nn.Sequential(
-            nn.LayerNorm(dims[-1], eps=1e-6),
-            nn.Dropout(0.4),
-            nn.Linear(dims[-1], num_classes)
-        )
+        self.head = nn.Linear(dims[-1], num_classes)
 
         self.apply(self._init_weights)
-        linear_layer: nn.Linear = self.head[-1]  # type: ignore
-        linear_layer.weight.data.mul_(head_init_scale)
-        linear_layer.bias.data.mul_(head_init_scale)
+        self.head.weight.data.mul_(head_init_scale)
+        self.head.bias.data.mul_(head_init_scale)
 
 
     def _init_weights(self, m):
@@ -199,10 +194,10 @@ def small_model(drop_path_rate=0.15, layer_scale_init_value=1e-6, head_init_scal
         )   
 
 
-def custom_model(drop_path_rate=0.25, layer_scale_init_value=1e-6, head_init_scale=1):
+def custom_model(drop_path_rate=0.15, layer_scale_init_value=1e-6, head_init_scale=1):
     """ Creates a custom ConvNeXt model, as is better for our dataset."""
     return ConvNeXt(
-        depths=[3, 3, 18, 3],
+        depths=[3, 3, 9, 3],
         dims=[96, 192, 384, 768],
         drop_path_rate=drop_path_rate, 
         layer_scale_init_value=layer_scale_init_value, 

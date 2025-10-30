@@ -66,21 +66,23 @@ class Transforms:
 
     train_transform = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
-        transforms.Resize((256, 256)),
+        transforms.Resize((224, 224)),
         transforms.RandomResizedCrop(224, scale=(0.95, 1.0)),
         transforms.RandomAffine(
             degrees=5,
             translate=(0.02, 0.02),
             scale=(0.95, 1.05),
         ),
+        transforms.RandomHorizontalFlip(p=0.5),
         transforms.ColorJitter(brightness=0.1, contrast=0.1),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        transforms.RandomErasing(),
     ])
 
     aggressive_train_transform = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
-        transforms.Resize((256, 256)),
+        transforms.Resize((224, 224)),
         transforms.RandomResizedCrop(224, scale=(0.85, 1.0)),
         transforms.RandomAffine(
             degrees=10,
