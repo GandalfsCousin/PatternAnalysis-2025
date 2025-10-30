@@ -1,4 +1,4 @@
-# Classifier for ADNI brain data based on the ConvNeXt
+# ADNI MRI data ConvNeXt Classifier 
 
 **Table of Contents**
 
@@ -34,12 +34,38 @@ Table 1: ADNI Dataset Split
 
 ## Training
 
+The final model was trained on the test data as follows, 
+
+### Hyperparamters
+
+While the model's values were chosen through tests and analysis of the data, the learning hyperparamters still had to be tuned and tested to allow for the model to learn well.
+
+Table 2: Learning Hyperparameters
+| Hyperparamters | Value |
+| ----- | ----- |
+|**batchSize**|32|
+|**epochs**|50|
+|**learningRate**|2e-4|
+|**weightDecay**|0.05|
+|**drop_path_rate**|0.2|
+
+A Batch Size of 32 was chosen to balance the batch normalization, against the computing limitations. This allowed for the normalisation samples to have enough data to not be skwed, while still allowing full Vram utalisation for fast training.
+
+50 Epochs were chosen, as from tests, validation loss and accuracy did not seem to improve drastically past 40 epochs, while usally test results would continue to increase as the model jsut started to 'memorise' the data.
+
+A learning rate of 2e-4 or 0.0002 was chosen as it provided a solid middle groud between extreme volitility of higher learning rates, and the usaual stagnation of extermely low earning rates for the ADNI data.
+
+A Weight Decay of 0.05 was used to help prvent overfitting, by penalising large weights int he loss function and gradient descent.
+
+A Drop path of 0.2 was chosen in an aim to further counterat the model overfitting the test data. This dropped 20\% of the connections forcing the model to not focus on specific connections and learn of feature.
+
+These Hyperparemters seemed to produce the best results from testing, finding a balnce between overfitting and model stagnatation in the learning process.
 
 ### Augmentation 
-
+#### Training transformation
 The training data was passed through some transformations first. This was done as all training images were quite homogeneous, and with the relatively small training set compared to the dataset ConvNeXt was originally trained for, this lead to high levels of overfitting on simples transforms to reshape the data. In an effort to counteract this overfitting, a very agressive transform was also tested. However, this was found to be counter productive as it would hinder the training for the model and keep the accuracy below 65\%. Using these tests, a moderate transformation was created, as it allowed to keep the delicate shapes and patterns of the MRI data without allowing the model to memorise specific pixel values.
 
-The training transformation configuration used is as follows:  
+Table 3: Training transformation configuration used
 | Argument | Value |
 | ----- | ----- |
 |**Grayscale**| (num_output_channels=3 |
@@ -63,6 +89,21 @@ RandomHorizontalFlip was applied to flip the image horazontally 50\% of the time
 ColorJitter was applied to slightly chnage the range of the greyscale channels, brightness=0.1 randomly scaled all pixel values within 10\%, and contrast=0.1 randomly scaled the contrast of the image within 10\%. This effectively moved and scaled the pixel values fo prevent the model from just learning intenisties.
 
 Finally, Normalize was use to bring all channels back to a mean and standard deviation of 0.5.
+
+#### Test Transformation
+
+As the format of the MRI data was altered to better suite the ConvNeXt model, the test data also had to be transformed. These transforms were simple, and were just done to give the best chance of the model classifying the test images.
+
+Table 4: Test transformation configuration used
+| Argument | Value |
+| ----- | ----- |
+|**Grayscale**| (num_output_channels=3 |
+|**Resize**| 224x224|
+|**Normalize**|mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]|
+
+### Training Configuration
+
+
 
 ## Results
 
