@@ -1,4 +1,4 @@
-# Classifier for ADNI brain data based on the ConvNeXt
+# ADNI MRI data ConvNeXt Classifier 
 
 **Table of Contents**
 
@@ -34,11 +34,89 @@ Table 1: ADNI Dataset Split
 
 ## Training
 
+The final model was trained on the test data as follows, 
+
+### Hyperparamters
+
+While the model's values were chosen through tests and analysis of the data, the learning hyperparamters still had to be tuned and tested to allow for the model to learn well.
+
+Table 2: Learning Hyperparameters
+| Hyperparamters | Value |
+| ----- | ----- |
+|**batchSize**|32|
+|**epochs**|50|
+|**learningRate**|2e-4|
+|**weightDecay**|0.05|
+|**drop_path_rate**|0.2|
+
+A Batch Size of 32 was chosen to balance the batch normalization, against the computing limitations. This allowed for the normalisation samples to have enough data to not be skwed, while still allowing full Vram utalisation for fast training.
+
+50 Epochs were chosen, as from tests, validation loss and accuracy did not seem to improve drastically past 40 epochs, while usally test results would continue to increase as the model jsut started to 'memorise' the data.
+
+A learning rate of 2e-4 or 0.0002 was chosen as it provided a solid middle groud between extreme volitility of higher learning rates, and the usaual stagnation of extermely low earning rates for the ADNI data.
+
+A Weight Decay of 0.05 was used to help prvent overfitting, by penalising large weights int he loss function and gradient descent.
+
+A Drop path of 0.2 was chosen in an aim to further counterat the model overfitting the test data. This dropped 20\% of the connections forcing the model to not focus on specific connections and learn of feature.
+
+These Hyperparemters seemed to produce the best results from testing, finding a balnce between overfitting and model stagnatation in the learning process.
+
 ### Augmentation 
-The training configuration is as follows:  
+#### Training transformation
+The training data was passed through some transformations first. This was done as all training images were quite homogeneous, and with the relatively small training set compared to the dataset ConvNeXt was originally trained for, this lead to high levels of overfitting on simples transforms to reshape the data. In an effort to counteract this overfitting, a very agressive transform was also tested. However, this was found to be counter productive as it would hinder the training for the model and keep the accuracy below 65\%. Using these tests, a moderate transformation was created, as it allowed to keep the delicate shapes and patterns of the MRI data without allowing the model to memorise specific pixel values.
+
+Table 3: Training transformation configuration used
 | Argument | Value |
 | ----- | ----- |
+|**Grayscale**| (num_output_channels=3 |
+|**Resize**| 224x224|
+|**RandomResizedCrop**|224, scale=(0.9, 1.0)|
+|**RandomAffine**|degrees=5, translate=(0.05, 0.05), scale=(0.95, 1.05)|
+|**RandomHorizontalFlip**|p=0.5|
+|**ColorJitter**|brightness=0.15, contrast=0.15|
+|**Normalize**|mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]|
 
+Grayscaling to 3 channels was applied to transform the image into a 'psuedo-RGB' image, as used in the original ConvNeXt paper, in order to allow the model to extract more information from the input image.
+
+Resize was applied to reshape the image to 224x224 to scale better with the pareamteres of the ConvNeXt model.
+
+RandomResizedCrop was applied to to this image then scaled back to 224x224, as it keeps 90% of the image still, this was used to move the brain section of the MRI off centre in hopes the model would memorise shapes of the data not pixel locations.
+
+RandomAffine was applied to slightly alter the image while keeping the shape of the data. Degrees=5 rotates the image $\in [-5^{\circ}, 5 ^{\circ}]$, translate=(0.05, 0.05) shifted the image vertically or horizontally within a 5\% range based on the width and height, and scale=(0.95, 1.05) zoomed the image within 5% of the original image, while keeping the 244x244 shape.
+
+RandomHorizontalFlip was applied to flip the image horazontally 50\% of the time.
+
+ColorJitter was applied to slightly chnage the range of the greyscale channels, brightness=0.15 randomly scaled all pixel values within 15\%, and contrast=0.15 randomly scaled the contrast of the image within 15\%. This effectively moved and scaled the pixel values fo prevent the model from just learning intenisties.
+
+Finally, Normalize was use to bring all channels back to a mean and standard deviation of 0.5.
+
+#### Test Transformation
+
+As the format of the MRI data was altered to better suite the ConvNeXt model, the test data also had to be transformed. These transforms were simple, and were just done to give the best chance of the model classifying the test images.
+
+Table 4: Test transformation configuration used
+| Argument | Value |
+| ----- | ----- |
+|**Grayscale**| (num_output_channels=3 |
+|**Resize**| 224x224|
+|**Normalize**|mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]|
+
+### Training Configuration
+
+To train the model, fee configriable settings were chosen to give the model the best chance of reaching a high accuracy. 
+
+```criterion = nn.CrossEntropyLoss(label_smoothing=Config.labelSmoothing) ```
+
+This is the most common loss function for multi-class classification tasks, measuring performance of a classification model whose output is a probability distribution over C classes. It was chosen due to its reliability and proir use in ConvNeXt training, inidcating relieable results.
+Labale Smoothing was used as a regularization technique to discourage overconfidence, by altering a hard target label (binary) to a soft target label (porbabilistic), and was used to battle overfitting in the model.
+
+```optimizer = torch.optim.AdamW(model.parameters(), lr=Config.learningRate, weight_decay=Config.weightDecay)```
+
+This is an an improved version of the Adam optimizer that decouples the weight decay term from the gradient update, which generally leads to better performance, especially in models with many parameters. The Learning Rate (lr) determines the step size taken in the direction of the negative gradient during optimization, and the weight_decay adds another regularization term (L2 regularization) that penalizes large weights in the model; This was done to help prevent overfitting.
+
+```scheduler = CosineAnnealingLR(optimizer, T_max=Config.epochs)```
+
+This learning rate scheduler was used to gradually decreases the learning rate from the initial value to almost zero following a cosine curve over the duration of the training, as specified by T_max, allowing the model to take smaller steps the closer it gets to the local minima during optimization.
 
 ## Results
 
