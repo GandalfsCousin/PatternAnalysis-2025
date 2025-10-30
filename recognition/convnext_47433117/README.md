@@ -21,6 +21,23 @@ Install all dependencies with:
 
 ```pip install -r requirements.txt ```
 
+## Structure
+
+PatternAnalysis-2025/recognition/
+└── convnext_47433117/
+    ├── dataset.py
+    ├── modules.py
+    ├── train.py
+    ├── predict.py
+    ├── requirements.txt
+    ├── images/
+    │   ├── 
+    │   └── 
+    ├── ADNI/AD_NC/
+    │   ├── test/
+    │   └── train/
+    └── README.md
+
 ## Dataset
 
 The ADNI (Alzheimer's Disease Neuroimaging Initiative) dataset is a public dataset, aimed for use in Alzheimer's  research. It is provided through the LONI Image and Data Archive, from the portal at https://adni.loni.usc.edu/data-samples/adni-data/ 
@@ -40,10 +57,63 @@ Table 1: ADNI Dataset Split
 | **Test**       | 4,460     | 4,540     | 9,000        |
 | **Total**      | 14,860    | 15,660    | 30,520       |
 
+This has been warpped in the custome data loader `ADNI_Loader` in `dataset.py`
+
+### Creation of Valedation Dataset
+
+
+
+## Model Architecture
+
+ConvNeXt is a modern convolutional neural network that builds on standard CNNs while incorporating design principles inspired by the Swin Transformer. The core building block of ConvNeXt is a depthwise 7×7 convolution, which efficiently captures spatial context across a large receptive field while preserving spatial dimensions through padding. Additionally, the model uses GELU activations instead of ReLU and LayerNorm in place of Batch Normalization, making it more suitable for complex image classification tasks.
+
+The full ConvNeXt model can be seen below:
+
+
+### ConvNeXt Block
+The ConvNeXt block is an adapted ResNet50 block, inspired by the swin transformer, and is defined as seen below:
+![ConvNeXt block](images/Block.png)
+
+### Custom ConvNeXt implementation
+
+Using this base model, a custom class was adapted for the ADNI dataset, modifying the feature channels, and adding dropout and layer scaling to prevent overfitting on the relatively small MRI dataset. This model was adapted from the ConvNeXt-small model, with roughly 50M parameters. This was in order to find a balance between the model not identifying important patterns, as seen in tests of ConvNeXt-tiny, and overfitting.
+Custom functions were written to replace timm trunc_normal_, and DropPath, with the final model ConvNeXt in `moduels.py` following the below arcitechture. 
+
+```custom_small(drop_path_rate=0.15, layer_scale_init_value=1e-6, head_init_scale=1, classifier_dropout=0.3)```
+
+Stem
+- 4×4 Conv2d, stride 4.
+- LayerNorm: stabilize input features.
+
+ConvNeXt Block
+- 7×7 depthwise convolution (Conv2d(groups=dim)) to capture spatial context.
+- Permute to channels-last (N,H,W,C) for LayerNorm.
+- LayerNorm across channels.
+- Permute back to channels-first (N,C,H,W).
+- 1×1 pointwise convolution
+- GELU → 1×1 pointwise convolution.
+- Layer scale.
+- Custom DropPath (stochastic depth).
+- Residual connection.
+
+Final Layer
+- Global average pooling.
+- LayerNorm.
+- Dropout (0.3) for regularization.
+- Linear classifier to 2 classes (AD vs NC).
+
+ConvNeXt custom_small Flow
+- Stem
+- Stage 1: 3× ConvNeXt Block, 96 channels
+- Stage 2: Downsample (2×2 Conv) → 3× ConvNeXt Block, 192 channels
+- Stage 3: Downsample → 9× ConvNeXt Block, 384 channels
+- Stage 4: Downsample → 3× ConvNeXt Block, 768 channels
+- Final Layer
+
 
 ## Training
 
-The final model was trained on the test data as follows, 
+The final model was trained on the test data as follows in `train.py` , it was trained on a 4070. The final hyperparameters for the training loops were found through experementation, it was found that the model either did not capute the features, hardly reaching 65\% valedation accuracy after 100 test epochs, or rapidly overfit the model. A sweet spot was found, by using increased test data augmentations and other regulirasation methods to counteract overfitting. Using this, models tended to reach conversion after just 30 epochs, though could be subject to overfitting after this.
 
 ### Hyperparamters
 
@@ -127,58 +197,18 @@ This is an an improved version of the Adam optimizer that decouples the weight d
 
 This learning rate scheduler was used to gradually decreases the learning rate from the initial value to almost zero following a cosine curve over the duration of the training, as specified by T_max, allowing the model to take smaller steps the closer it gets to the local minima during optimization.
 
-## Model Architecture
-
-ConvNeXt is a modern convolutional neural network that builds on standard CNNs while incorporating design principles inspired by the Swin Transformer. The core building block of ConvNeXt is a depthwise 7×7 convolution, which efficiently captures spatial context across a large receptive field while preserving spatial dimensions through padding. Additionally, the model uses GELU activations instead of ReLU and LayerNorm in place of Batch Normalization, making it more suitable for complex image classification tasks.
-
-The full ConvNeXt model can be seen below:
-
-
-### ConvNeXt Block
-The ConvNeXt block is an adapted ResNet50 block, inspired by the swin transformer, and is defined as seen below:
-![ConvNeXt block](images/Block.png)
-
-### Custom ConvNeXt implementation
-
-Using this base model, a custom class was adapted for the ADNI dataset, modifying the feature channels, and adding dropout and layer scaling to prevent overfitting on the relatively small MRI dataset. This model was adapted from the ConvNeXt-small model, with roughly 50M parameters. This was in order to find a balance between the model not identifying important patterns, as seen in tests of ConvNeXt-tiny, and overfitting.
-Custom functions were written to replace timm trunc_normal_, and DropPath, with the final model ConvNeXt in `moduels.py` following the below arcitechture.
-
-```depths=[3,3,9,3], dims=[96,192,384,768]```
-
-Stem
-- 4×4 Conv2d, stride 4.
-- LayerNorm: stabilize input features.
-
-ConvNeXt Block
-- 7×7 depthwise convolution (Conv2d(groups=dim)) to capture spatial context.
-- Permute to channels-last (N,H,W,C) for LayerNorm.
-- LayerNorm across channels.
-- Permute back to channels-first (N,C,H,W).
-- 1×1 pointwise convolution
-- GELU → 1×1 pointwise convolution.
-- Layer scale.
-- Custom DropPath (stochastic depth).
-- Residual connection.
-
-Final Layer
-- Global average pooling.
-- LayerNorm.
-- Dropout (0.3) for regularization.
-- Linear classifier to 2 classes (AD vs NC).
-
-ConvNeXt custom_small Flow
-- Stem
-- Stage 1: 3× ConvNeXt Block
-- Stage 2: Downsample (2×2 Conv) → 3× ConvNeXt Block
-- Stage 3: Downsample → 9× ConvNeXt Block
-- Stage 4: Downsample → 3× ConvNeXt Block
-- Final Layer
-
-
+### Usage
 
 ## Results
 
-## Usage
+Using the above defined model in `modules.py` and the training script in `train.py`, the model was able to prodice a 77.68\% accuracy on the test data set, the model was produced after x epochs, after which, the valedation loss stagnated and started to fall, whil the test loss continued to rise. This suggests the model was overfitting despite the harsh regularization and training transforms.
+
+Additional performance metrics:  
+- Precision: 0.75  
+- Recall: 0.78  
+- F1-score: 0.76
+
+## Inference
 
 ## Refrences
 
