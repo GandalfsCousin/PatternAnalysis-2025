@@ -62,48 +62,36 @@ class ADNI_Loader(Dataset):
 
 
 class Transforms:
-    """ Wrapper class holding transforms for the dataset"""
+    """Wrapper class holding transforms for ADNI dataset."""
 
     train_transform = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
         transforms.Resize((224, 224)),
-        transforms.RandomResizedCrop(224, scale=(0.95, 1.0)),
-        transforms.RandomAffine(
-            degrees=5,
-            translate=(0.02, 0.02),
-            scale=(0.95, 1.05),
-        ),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        transforms.RandomResizedCrop(224, scale=(0.9, 1.0)),
+        transforms.RandomAffine(degrees=7, translate=(0.07,0.07), scale=(0.93,1.07)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0.15, contrast=0.15),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-        transforms.RandomErasing(),
+        transforms.Normalize(mean=[0.5]*3, std=[0.5]*3),
     ])
 
     aggressive_train_transform = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
         transforms.Resize((224, 224)),
         transforms.RandomResizedCrop(224, scale=(0.85, 1.0)),
-        transforms.RandomAffine(
-            degrees=10,
-            translate=(0.05, 0.05),
-            scale=(0.9, 1.1),
-        ),
-        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomHorizontalFlip(),
         transforms.ColorJitter(brightness=0.2, contrast=0.2),
-        transforms.RandomApply([transforms.GaussianBlur(3, sigma=(0.1, 2.0))], p=0.3),
+        transforms.RandomApply([transforms.GaussianBlur(3)], p=0.3),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-        transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0),
+        transforms.Normalize(mean=[0.5]*3, std=[0.5]*3),
+        transforms.RandomErasing(p=0.5)
     ])
 
-    
-    
     test_transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=3),  
-        transforms.Resize((224, 224)), 
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)
     ])
 
 
