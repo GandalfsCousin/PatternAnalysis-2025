@@ -18,9 +18,11 @@ The ADNI (Alzheimer's Disease Neuroimaging Initiative) dataset is a public datas
 
 This data set provides grayscale, 256 x 240 pixel, T1w MRI images categorized into Alzheimer's Disease (AD) and Normal Control (NC) groups; with an example of each class shown below. These images have been split into Train and Test sets, withe each image following the filename structre `patient_index.png`, allowing the images to be split per patient to avoid data leakage between groups. The statistics of the dataset have been included in the table below.
 
-Figure 2: Example AD Image emsp; emsp; Figure 3: Example NC Image \\
+| Figure 2: Example AD Image | Figure 3: Example NC Image |
+|----------------------------|----------------------------|
+| ![AD](images/AD_Example.jpeg) | ![NC](images/NC_Example.jpeg) |
 
-![alt text](images\AD_Example.jpeg) ![alt text](images\NC_Example.jpeg)
+
  
 Table 1: ADNI Dataset Split
 | Dataset Split  | AD Images | NC Images | Total Images |
@@ -32,6 +34,7 @@ Table 1: ADNI Dataset Split
 
 ## Training
 
+### Augmentation 
 The training configuration is as follows:  
 | Argument | Value |
 | ----- | ----- |
