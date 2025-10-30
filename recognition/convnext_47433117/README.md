@@ -6,11 +6,20 @@
 
 The problem at hand was the classification of MRI brainscan images in the ADNI dataset; this dataset contains sliced MRI brain scans, labeled Alzheimer's disease (AD) and normal control (NC). For this, a ConvNeXt classification model was implemented, this is a convolutional network adapted from ResNet50 and the Swin Transformer. This allows the model to improve over the ResNet50 in image recognitions tasks and led to it being implemented for tasks such as medical imaging classifaction. Using this, a model was implemented to acheive xx accuracy on the test set.
 
+## Dependencies
+- Python 3.12.7
+- numpy==2.3.3
+- pandas==2.3.3
+- matplotlib==3.10.7
+- scikit-learn==1.7.2
+- scipy==1.16.2
+- torch==2.9.0
+- torchvision==0.24.0
+- tqdm==4.67.1
 
-## Model Architecture
+Install all dependencies with:
 
-![alt text](images/Block.png)
-
+```pip install -r requirements.txt ```
 
 ## Dataset
 
@@ -97,7 +106,7 @@ As the format of the MRI data was altered to better suite the ConvNeXt model, th
 Table 4: Test transformation configuration used
 | Argument | Value |
 | ----- | ----- |
-|**Grayscale**| (num_output_channels=3 |
+|**Grayscale**| num_output_channels=3 |
 |**Resize**| 224x224|
 |**Normalize**|mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]|
 
@@ -118,8 +127,60 @@ This is an an improved version of the Adam optimizer that decouples the weight d
 
 This learning rate scheduler was used to gradually decreases the learning rate from the initial value to almost zero following a cosine curve over the duration of the training, as specified by T_max, allowing the model to take smaller steps the closer it gets to the local minima during optimization.
 
+## Model Architecture
+
+ConvNeXt is a modern convolutional neural network that builds on standard CNNs while incorporating design principles inspired by the Swin Transformer. The core building block of ConvNeXt is a depthwise 7×7 convolution, which efficiently captures spatial context across a large receptive field while preserving spatial dimensions through padding. Additionally, the model uses GELU activations instead of ReLU and LayerNorm in place of Batch Normalization, making it more suitable for complex image classification tasks.
+
+The full ConvNeXt model can be seen below:
+
+
+### ConvNeXt Block
+The ConvNeXt block is an adapted ResNet50 block, inspired by the swin transformer, and is defined as seen below:
+![ConvNeXt block](images/Block.png)
+
+### Custom ConvNeXt implementation
+
+Using this base model, a custom class was adapted for the ADNI dataset, modifying the feature channels, and adding dropout and layer scaling to prevent overfitting on the relatively small MRI dataset. This model was adapted from the ConvNeXt-small model, with roughly 50M parameters. This was in order to find a balance between the model not identifying important patterns, as seen in tests of ConvNeXt-tiny, and overfitting.
+Custom functions were written to replace timm trunc_normal_, and DropPath, with the final model ConvNeXt in `moduels.py` following the below arcitechture.
+
+```depths=[3,3,9,3], dims=[96,192,384,768]```
+
+Stem
+- 4×4 Conv2d, stride 4.
+- LayerNorm: stabilize input features.
+
+ConvNeXt Block
+- 7×7 depthwise convolution (Conv2d(groups=dim)) to capture spatial context.
+- Permute to channels-last (N,H,W,C) for LayerNorm.
+- LayerNorm across channels.
+- Permute back to channels-first (N,C,H,W).
+- 1×1 pointwise convolution
+- GELU → 1×1 pointwise convolution.
+- Layer scale.
+- Custom DropPath (stochastic depth).
+- Residual connection.
+
+Final Layer
+- Global average pooling.
+- LayerNorm.
+- Dropout (0.3) for regularization.
+- Linear classifier to 2 classes (AD vs NC).
+
+ConvNeXt custom_small Flow
+- Stem
+- Stage 1: 3× ConvNeXt Block
+- Stage 2: Downsample (2×2 Conv) → 3× ConvNeXt Block
+- Stage 3: Downsample → 9× ConvNeXt Block
+- Stage 4: Downsample → 3× ConvNeXt Block
+- Final Layer
+
+
+
 ## Results
 
 ## Usage
 
 ## Refrences
+
+Liu Z., Mao H., Wu C‑Y., Feichtenhofer C., Darrell T., Xie S. “A ConvNet for the 2020s”, arXiv:2201.03545. 
+arXiv URL: https://arxiv.org/pdf/2201.03545
