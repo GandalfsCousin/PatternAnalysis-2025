@@ -34,11 +34,35 @@ Table 1: ADNI Dataset Split
 
 ## Training
 
+
 ### Augmentation 
-The training configuration is as follows:  
+
+The training data was passed through some transformations first. This was done as all training images were quite homogeneous, and with the relatively small training set compared to the dataset ConvNeXt was originally trained for, this lead to high levels of overfitting on simples transforms to reshape the data. In an effort to counteract this overfitting, a very agressive transform was also tested. However, this was found to be counter productive as it would hinder the training for the model and keep the accuracy below 65\%. Using these tests, a moderate transformation was created, as it allowed to keep the delicate shapes and patterns of the MRI data without allowing the model to memorise specific pixel values.
+
+The training transformation configuration used is as follows:  
 | Argument | Value |
 | ----- | ----- |
+|**Grayscale**| (num_output_channels=3 |
+|**Resize**| 224x224|
+|**RandomResizedCrop**|224, scale=(0.95, 1.0)|
+|**RandomAffine**|degrees=5, translate=(0.02, 0.02), scale=(0.95, 1.05)|
+|**RandomHorizontalFlip**|p=0.5|
+|**ColorJitter**|brightness=0.1, contrast=0.1|
+|**Normalize**|mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]|
 
+Grayscaling to 3 channels was applied to transform the image into a 'psuedo-RGB' image, as used in the original ConvNeXt paper, in order to allow the model to extract more information from the input image.
+
+Resize was applied to reshape the image to 224x224 to scale better with the pareamteres of the ConvNeXt model.
+
+RandomResizedCrop was applied to to this image then scaled back to 224x224, as it keeps 95% of the image still, this was used to move the brain section of the MRI off centre in hopes the model would memorise shapes of the data not pixel locations.
+
+RandomAffine was applied to slightly alter the image while keeping the shape of the data. Degrees=5 rotates the image $\in [-5^{\circ}, 5 ^{\circ}]$, translate=(0.02, 0.02) shifted the image vertically or horizontally within a 2\% range based on the width and height, and scale=(0.95, 1.05) zoomed the image within 5% of the original image, while keeping the 244x244 shape.
+
+RandomHorizontalFlip was applied to flip the image horazontally 50\% of the time.
+
+ColorJitter was applied to slightly chnage the range of the greyscale channels, brightness=0.1 randomly scaled all pixel values within 10\%, and contrast=0.1 randomly scaled the contrast of the image within 10\%. This effectively moved and scaled the pixel values fo prevent the model from just learning intenisties.
+
+Finally, Normalize was use to bring all channels back to a mean and standard deviation of 0.5.
 
 ## Results
 
