@@ -1,9 +1,9 @@
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
-from modules import small_model
+from modules import custom_model, custom_small
 from dataset import ADNI_Loader, Transforms
 
 
@@ -21,22 +21,34 @@ def main():
         pin_memory=True, num_workers=4
     )
 
-    model = small_model().to(Config.device)
+    model = custom_small().to(Config.device)
     checkpoint = torch.load(Config.modelPath, map_location=Config.device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
-    correct, total = 0, 0
+    all_preds = []
+    all_labels = []
+
     with torch.no_grad():
         for images, labels in tqdm(test_loader, desc="Evaluating"):
             images, labels = images.to(Config.device), labels.to(Config.device)
             outputs = model(images)
             _, preds = torch.max(outputs, 1)
-            correct += (preds == labels).sum().item()
-            total += labels.size(0)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
 
-    acc = correct / total
-    print(f"\nTest Accuracy: {acc * 100:.2f}% ({correct}/{total})")
+    accuracy = accuracy_score(all_labels, all_preds)
+    precision = precision_score(all_labels, all_preds, average='weighted')
+    recall = recall_score(all_labels, all_preds, average='weighted')
+    f1 = f1_score(all_labels, all_preds, average='weighted')
+    conf_matrix = confusion_matrix(all_labels, all_preds)
+
+    print(f"\nTest Accuracy: {accuracy * 100:.2f}%")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall:    {recall:.4f}")
+    print(f"F1-score:  {f1:.4f}")
+    print("Confusion Matrix:")
+    print(conf_matrix)
 
 
 if __name__ == "__main__":
