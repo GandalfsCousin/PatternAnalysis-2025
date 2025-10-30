@@ -2,27 +2,30 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+import argparse
 
 from modules import custom_model, custom_small
 from dataset import ADNI_Loader, Transforms
 
-
-class Config:
-    dataRoot = "recognition/convnext_47433117/ADNI/AD_NC"
-    batchSize = 16
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    modelPath = "checkpoints/77.pth"
-
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate ConvNeXt model on ADNI test set")
+    parser.add_argument('--data_root', type=str, default="recognition/convnext_47433117/ADNI/AD_NC", help="Path to ADNI dataset root")
+    parser.add_argument('--batch_size', type=int, default=32, help="Batch size for DataLoader")
+    parser.add_argument('--model_path', type=str, required=True, help="Path to saved model checkpoint")
+    return parser.parse_args()
 
 def main():
-    test_dataset = ADNI_Loader(Config.dataRoot, split="test", transform=Transforms.test_transform)
+    args = parse_args()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    test_dataset = ADNI_Loader(args.data_root, split="test", transform=Transforms.test_transform)
     test_loader = DataLoader(
-        test_dataset, batch_size=Config.batchSize, shuffle=False,
+        test_dataset, batch_size=args.batch_size, shuffle=False,
         pin_memory=True, num_workers=4
     )
 
-    model = custom_small().to(Config.device)
-    checkpoint = torch.load(Config.modelPath, map_location=Config.device)
+    model = custom_small().to(device)
+    checkpoint = torch.load(args.model_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
@@ -31,7 +34,7 @@ def main():
 
     with torch.no_grad():
         for images, labels in tqdm(test_loader, desc="Evaluating"):
-            images, labels = images.to(Config.device), labels.to(Config.device)
+            images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             _, preds = torch.max(outputs, 1)
             all_preds.extend(preds.cpu().numpy())
