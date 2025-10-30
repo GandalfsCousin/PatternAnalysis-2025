@@ -126,7 +126,7 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 
 
-def custom_small(drop_path_rate=0.15, layer_scale_init_value=1e-6, head_init_scale=1, classifier_dropout=0.3):
+def custom_small(drop_path_rate=0.2, layer_scale_init_value=1e-6, head_init_scale=1, classifier_dropout=0.3):
     return ConvNeXt(depths=[3,3,27,3], dims=[96,192,384,768],
                     drop_path_rate=drop_path_rate,
                     layer_scale_init_value=layer_scale_init_value,
