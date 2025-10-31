@@ -79,11 +79,12 @@ This has been warpped in the custome data loader `ADNI_Loader` in `dataset.py`
 
 ### Creation of Valedation Dataset
 
+To follow the correct training, a valedation set was made to measure the accuracy of the model during training, and be used to tweak the hyper-parameters. To ensure there is not data leakage, the training data was split on a patient messure, ensuring that no patients data ended up in both the valedation set and train set, boosting metrics when overfitting. It was chosen to only use 10% of the data as a valedation set, as the dataset was already small, loosing too many patients would ensure the model would memorise the training set, or not have enough information to train.
 
 
 ## Model Architecture
 
-ConvNeXt is a modern convolutional neural network that builds on standard CNNs while incorporating design principles inspired by the Swin Transformer. The core building block of ConvNeXt is a depthwise 7×7 convolution, which efficiently captures spatial context across a large receptive field while preserving spatial dimensions through padding. Additionally, the model uses GELU activations instead of ReLU and LayerNorm in place of Batch Normalization, making it more suitable for complex image classification tasks.
+ConvNeXt is a modern convolutional neural network that builds on standard CNNs while incorporating design principles inspired by the Swin Transformer. The core building block of ConvNeXt is a depthwise 7×7 convolution, which efficiently captures spatial context across a large receptive field while preserving spatial dimensions through padding. Additionally, the model uses GELU activations instead of ReLU and LayerNorm in place of Batch Normalization, making it more suitable for complex image classification tasks. [3]
 
 The full ConvNeXt model can be seen below:
 
@@ -91,7 +92,7 @@ The full ConvNeXt model can be seen below:
 
 ### ConvNeXt Block
 The ConvNeXt block is an adapted ResNet50 block, inspired by the Swin Transformer, and is defined as seen below:
-![ConvNeXt block](images/Block.png)
+![ConvNeXt block](images/Block.png) [1]
 
 ### Custom ConvNeXt implementation
 
@@ -154,15 +155,15 @@ A Batch Size of 32 was chosen to balance the batch normalization, against the co
 
 A learning rate of 2e-4 or 0.0002 was chosen as it provided a solid middle groud between extreme volitility of higher learning rates, and the usaual stagnation of extermely low earning rates for the ADNI data.
 
-A Weight Decay of 0.05 was used to help prvent overfitting, by penalising large weights int he loss function and gradient descent.
+A Weight Decay of 0.05 was used to help prvent overfitting, by penalising large weights int he loss function and gradient descent. [2]
 
-A Drop path of 0.2 was chosen in an aim to further counterat the model overfitting the test data. This dropped 20\% of the connections forcing the model to not focus on specific connections and learn of feature.
+A Drop path of 0.2 was chosen in an aim to further counterat the model overfitting the test data. This dropped 20\% of the connections forcing the model to not focus on specific connections and learn of feature. [2]
 
 These Hyperparemters seemed to produce the best results from testing, finding a balnce between overfitting and model stagnatation in the learning process.
 
 ### Augmentation 
 #### Training transformation
-The training data was passed through some transformations first. This was done as all training images were quite homogeneous, and with the relatively small training set compared to the dataset ConvNeXt was originally trained for, this lead to high levels of overfitting on simples transforms to reshape the data. In an effort to counteract this overfitting, a very agressive transform was also tested. However, this was found to be counter productive as it would hinder the training for the model and keep the accuracy below 65\%. Using these tests, a moderate transformation was created, as it allowed to keep the delicate shapes and patterns of the MRI data without allowing the model to memorise specific pixel values.
+The training data was passed through some transformations first. This was done as all training images were quite homogeneous, and with the relatively small training set compared to the dataset ConvNeXt was originally trained for, this lead to high levels of overfitting on simples transforms to reshape the data. In an effort to counteract this overfitting, a very agressive transform was also tested. However, this was found to be counter productive as it would hinder the training for the model and keep the accuracy below 65\%. Using these tests, a moderate transformation was created, as it allowed to keep the delicate shapes and patterns of the MRI data without allowing the model to memorise specific pixel values. [2]
 
 Table 3: Training transformation configuration used
 | Argument | Value |
@@ -276,7 +277,16 @@ Use the model
 ```
 python recognition/convnext_47433117/predict.py --data_root recognition/convnext_47433117/ADNI/AD_NC --model_path recognition/convnext_47433117/checkpoints/best_model.pth
 ```
+
+## Further improvements
+
+Further improvements could be made to this by using the ConvNeXt v2 model this model uses a VAE encoder, based on a ConvNeXt‑Tiny, to build a latent space that is tailored to dermatology rather than natural‑image features, this is then frozed and used as the feature extractor for the images. This allows models trained from scratch ratrher than pretrained ones, while counteracting overfitting, if the task did not force the ConvNeXt v1, this would be a better suited model for the task. [4]
 ## References
 
-Liu Z., Mao H., Wu C‑Y., Feichtenhofer C., Darrell T., Xie S. “A ConvNet for the 2020s”, arXiv:2201.03545. 
-arXiv URL: https://arxiv.org/pdf/2201.03545
+[1] GeeksforGeeks. “ConvNeXt.” GeeksforGeeks, 15 Jul. 2025, https://www.geeksforgeeks.org/computer-vision/convnext/
+
+[2] Google. (2025, August 25). ML Practicum: Image Classification – Preventing Overfitting. Google Developers. https://developers.google.com/machine-learning/practica/image-classification/preventing-overfitting?utm_source=chatgpt.com
+
+[3] Liu Z., Mao H., Wu C‑Y., Feichtenhofer C., Darrell T., Xie S. “A ConvNet for the 2020s”, arXiv:2201.03545. URL: https://arxiv.org/pdf/2201.03545
+
+[4] Matas, I., Serrano, C., Nogales, M., Moreno, D., Ferrándiz, L., Ojeda, T., & Acha, B. (2025). Mitigating Overfitting in Medical Imaging: Self‑Supervised Pretraining vs. ImageNet Transfer Learning for Dermatological Diagnosis (arXiv preprint arXiv:2505.16773). Retrieved from https://arxiv.org/abs/2505.16773
