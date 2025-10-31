@@ -199,6 +199,11 @@ This learning rate scheduler was used to gradually decreases the learning rate f
 
 ### Usage
 
+To run the learning script, use
+```
+python train.py --data_root <path to data root folder> --save_dir <path to checkpoints folder> 
+```
+
 ## Results
 
 Using the above defined model in `modules.py` and the training script in `train.py`, the model was able to prodice a 77.23\% accuracy on the test data set, the model was produced after x epochs, after which, the valedation loss stagnated and started to fall, whil the test loss continued to rise. This suggests the model was overfitting despite the harsh regularization and training transforms.
@@ -213,6 +218,8 @@ Confusion Matrix:
 |-----------|-------|-------|
 | AD        | 2801  | 1659  |
 | NC        | 390   | 4150  |
+
+
 
 
 ## Inference
