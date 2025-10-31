@@ -1,10 +1,29 @@
 # ADNI MRI data ConvNeXt Classifier 
+### Table of Contents
+1. [Overview](#overview)
+2. [Dependencies](#dependencies)
+3. [Structure](#structure)
+4. [Dataset](#dataset)
+   - [Creation of Validation Dataset](#creation-of-valedation-dataset)
+5. [Model Architecture](#model-architecture)
+   - [ConvNeXt Block](#convnext-block)
+   - [Custom ConvNeXt Implementation](#custom-convnext-implementation)
+6. [Training](#training)
+   - [Hyperparameters](#hyperparamters)
+   - [Augmentation](#augmentation)
+     - [Training Transformation](#training-transformation)
+     - [Test Transformation](#test-transformation)
+   - [Training Configuration](#training-configuration)
+7. [Usage](#usage)
+8. [Results](#results)
+9. [Inference](#inference)
+10. [References](#references)
 
-**Table of Contents**
+---
 
 ## Overview
 
-The problem at hand was the classification of MRI brainscan images in the ADNI dataset; this dataset contains sliced MRI brain scans, labeled Alzheimer's disease (AD) and normal control (NC). For this, a ConvNeXt classification model was implemented, this is a convolutional network adapted from ResNet50 and the Swin Transformer. This allows the model to improve over the ResNet50 in image recognitions tasks and led to it being implemented for tasks such as medical imaging classifaction. Using this, a model was implemented to acheive 77.23\% accuracy on the test set.
+The problem at hand was the classification of MRI brain scan images in the ADNI dataset; this dataset contains sliced MRI brain scans, labeled Alzheimer's disease (AD) and normal control (NC). For this, a ConvNeXt classification model was implemented. This is a convolutional network adapted from ResNet50 and the Swin Transformer. This allows the model to improve over the ResNet50 in image recognition tasks and led to it being implemented for tasks such as medical imaging classification. Using this, a model was implemented to achieve 77.23% accuracy on the test set.
 
 ## Dependencies
 - Python 3.12.7
@@ -23,6 +42,7 @@ Install all dependencies with:
 
 ## Structure
 
+```
 PatternAnalysis-2025/recognition/
 └── convnext_47433117/
     ├── dataset.py
@@ -31,18 +51,16 @@ PatternAnalysis-2025/recognition/
     ├── predict.py
     ├── requirements.txt
     ├── images/
-    │   ├── 
-    │   └── 
     ├── ADNI/AD_NC/
     │   ├── test/
     │   └── train/
     └── README.md
-
+```
 ## Dataset
 
-The ADNI (Alzheimer's Disease Neuroimaging Initiative) dataset is a public dataset, aimed for use in Alzheimer's  research. It is provided through the LONI Image and Data Archive, from the portal at https://adni.loni.usc.edu/data-samples/adni-data/ 
+The ADNI (Alzheimer's Disease Neuroimaging Initiative) dataset is a public dataset aimed for use in Alzheimer's research. It is provided through the LONI Image and Data Archive, from the portal at https://adni.loni.usc.edu/data-samples/adni-data/ 
 
-This data set provides grayscale, 256 x 240 pixel, T1w MRI images categorized into Alzheimer's Disease (AD) and Normal Control (NC) groups; with an example of each class shown below. These images have been split into Train and Test sets, withe each image following the filename structre `patient_index.png`, allowing the images to be split per patient to avoid data leakage between groups. The statistics of the dataset have been included in the table below.
+This dataset provides grayscale, 256 × 240 pixel, T1w MRI images categorized into Alzheimer's Disease (AD) and Normal Control (NC) groups; with an example of each class shown below. These images have been split into Train and Test sets, with each image following the filename structure `patient_index.png`, allowing the images to be split per patient to avoid data leakage between groups. The statistics of the dataset are included in the table below.
 
 | Figure 2: Example AD Image | Figure 3: Example NC Image |
 |----------------------------|----------------------------|
@@ -50,7 +68,7 @@ This data set provides grayscale, 256 x 240 pixel, T1w MRI images categorized in
 
 
  
-Table 1: ADNI Dataset Split
+**Table 1: ADNI Dataset Split**
 | Dataset Split  | AD Images | NC Images | Total Images |
 |----------------|-----------|-----------|--------------|
 | **Train**      | 10,400    | 11,120    | 21,520       |
@@ -72,13 +90,14 @@ The full ConvNeXt model can be seen below:
 ![ConvNeXt](images/ConvNeXt-structure.webp)
 
 ### ConvNeXt Block
-The ConvNeXt block is an adapted ResNet50 block, inspired by the swin transformer, and is defined as seen below:
+The ConvNeXt block is an adapted ResNet50 block, inspired by the Swin Transformer, and is defined as seen below:
 ![ConvNeXt block](images/Block.png)
 
 ### Custom ConvNeXt implementation
 
 Using this base model, a custom class was adapted for the ADNI dataset, modifying the feature channels, and adding dropout and layer scaling to prevent overfitting on the relatively small MRI dataset. This model was adapted from the ConvNeXt-small model, with roughly 50M parameters. This was in order to find a balance between the model not identifying important patterns, as seen in tests of ConvNeXt-tiny, and overfitting.
-Custom functions were written to replace timm trunc_normal_, and DropPath, with the final model ConvNeXt in `moduels.py` following the below arcitechture. 
+
+Custom functions were written to replace timm `trunc_normal_` and `DropPath`, with the final model ConvNeXt in `modules.py` following the below architecture:
 
 ```custom_small(drop_path_rate=0.15, layer_scale_init_value=1e-6, head_init_scale=1, classifier_dropout=0.3)```
 
@@ -114,7 +133,7 @@ ConvNeXt custom_small Flow
 
 ## Training
 
-The final model was trained on the test data as follows in `train.py` , it was trained on a 4070. The final hyperparameters for the training loops were found through experementation, it was found that the model either did not capute the features, hardly reaching 65\% valedation accuracy after 100 test epochs, or rapidly overfit the model. A sweet spot was found, by using increased test data augmentations and other regulirasation methods to counteract overfitting. Using this, models tended to reach conversion after just 30 epochs, though could be subject to overfitting after this.
+The final model was trained on the test data as follows in `train.py` , it was trained on a 2070 super. The final hyperparameters for the training loops were found through experementation, it was found that the model either did not capute the features, hardly reaching 65\% valedation accuracy after 100 test epochs, or rapidly overfit the model. A sweet spot was found, by using increased test data augmentations and other regulirasation methods to counteract overfitting. Using this, models tended to reach conversion after just 30 epochs, though could be subject to overfitting after this.
 
 ### Hyperparamters
 
@@ -207,26 +226,57 @@ python train.py --data_root <path to data root folder> --save_dir <path to check
 
 ## Results
 
-Using the above defined model in `modules.py` and the training script in `train.py`, the model was able to prodice a 77.23\% accuracy on the test data set, the model was produced after x epochs, after which, the valedation loss stagnated and started to fall, whil the test loss continued to rise. This suggests the model was overfitting despite the harsh regularization and training transforms.
+Using the above defined model in `modules.py` and the training script in `train.py`, the model was able to predict a 77.03\% accuracy on the test data set, the model was produced after x epochs, after which, the valedation loss stagnated and started to fall, while the test loss continued to rise. This suggests the model was overfitting despite the harsh regularization and training transforms. Whilst the model overfit the training data, it produced the best accuracy of other models, where harsh regularisation prevent the model from overfitting; this suggests the regularization techinuques were loosing information from the original images. A summary of the best model can be found below.
 
-Additional performance metrics:  
-- Precision: 0.8003
-- Recall:    0.7784
-- F1-score:  0.7734
-  
-Confusion Matrix:
+### Additional performance metrics:  
+| Class | Precision | Recall | F1-score | Support |
+|:------|-----------:|--------:|----------:|---------:|
+| **AD** | 0.88 | 0.62 | 0.73 | 4460 |
+| **NC** | 0.71 | 0.91 | 0.80 | 4540 |
+| **Accuracy** |  |  | **0.77** | 9000 |
+| **Macro Avg** | 0.79 | 0.77 | 0.77 | 9000 |
+| **Weighted Avg** | 0.79 | 0.77 | 0.77 | 9000 |
+
+### Confusion Matrix:
 | True\Pred | AD    | NC    |
 |-----------|-------|-------|
-| AD        | 2801  | 1659  |
+| AD        | 2784  | 1676  |
 | NC        | 390   | 4150  |
 
-![Learning Curve](images/lr_curve.png)
-![loss Curve](images/loss_curve.png)
-![Extreme Loss Curve](images/ExtremeOverfit.png)
+From this, it can be seen that the model has high precision for the NC class, accurately predicting in 91\% of the time, but struggles with the AD class.
+
+| Learning curve |Loss Curve|
+|-----------|-------|
+|![Learning Curve](images/lr_curve.png)|![Extreme Loss Curve](images/ExtremeOverfit.png)|
+
+As it can be seen here, after 15 epochs the model starts to overfit, however, the best model was not produced untill epoch 30, indicating that the model was still learning features during the early stages of overfitting. In an effort to reduce this overfitting, harsher regularization and image transformations were used. however, while stopping overfitting, these seemed to impact the valedation accuracy and even after 100 epochs, did not produce a better result than the overfitted model.
 
 ## Inference
 
-## Refrences
+To run a full test script from the PatternAnalysis-2025 root:
+On windows,
+```
+python3.12 -m venv venv
+venv\Scripts\Activate.ps1
+```
+on mac / linux
+```
+python3.12 -m venv venv
+source venv/bin/activate
+```
+Download requirments
+```
+pip install -r recognition/convnext_47433117/requirements.txt
+```
+Train the model
+```
+python recognition/convnext_47433117/train.py --data_root recognition/convnext_47433117/ADNI/AD_NC --save_dir recognition/convnext_47433117/checkpoints
+```
+Use the model 
+```
+python recognition/convnext_47433117/predict.py --data_root recognition/convnext_47433117/ADNI/AD_NC --model_path recognition/convnext_47433117/checkpoints/best_model.pth
+```
+## References
 
 Liu Z., Mao H., Wu C‑Y., Feichtenhofer C., Darrell T., Xie S. “A ConvNet for the 2020s”, arXiv:2201.03545. 
 arXiv URL: https://arxiv.org/pdf/2201.03545
