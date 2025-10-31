@@ -69,6 +69,7 @@ ConvNeXt is a modern convolutional neural network that builds on standard CNNs w
 
 The full ConvNeXt model can be seen below:
 
+![ConvNeXt](images/ConvNeXt-structure.webp)
 
 ### ConvNeXt Block
 The ConvNeXt block is an adapted ResNet50 block, inspired by the swin transformer, and is defined as seen below:
@@ -147,7 +148,7 @@ The training data was passed through some transformations first. This was done a
 Table 3: Training transformation configuration used
 | Argument | Value |
 | ----- | ----- |
-|**Grayscale**| (num_output_channels=3 |
+|**Grayscale**| num_output_channels=3 |
 |**Resize**| 224x224|
 |**RandomResizedCrop**|224, scale=(0.9, 1.0)|
 |**RandomAffine**|degrees=5, translate=(0.05, 0.05), scale=(0.95, 1.05)|
@@ -219,8 +220,9 @@ Confusion Matrix:
 | AD        | 2801  | 1659  |
 | NC        | 390   | 4150  |
 
-
-
+![Learning Curve](images/lr_curve.png)
+![loss Curve](images/loss_curve.png)
+![Extreme Loss Curve](images/ExtremeOverfit.png)
 
 ## Inference
 
