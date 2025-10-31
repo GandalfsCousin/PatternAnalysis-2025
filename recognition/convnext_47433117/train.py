@@ -1,3 +1,5 @@
+"""Train ConvNeXt on ADNI dataset and save best model/checkpoints"""
+
 import os
 import torch
 import torch.nn as nn
@@ -17,6 +19,7 @@ def parse_args():
     return parser.parse_args()
 
 def train_val_split(dataset, val_ratio=0.1):
+    """Splits dataset into training and validation subsets based on unique patient IDs."""
     unique_patients = np.unique(dataset.patient_ids)
     np.random.shuffle(unique_patients)
 
@@ -30,6 +33,7 @@ def train_val_split(dataset, val_ratio=0.1):
     return Subset(dataset, train_idx), Subset(dataset, val_idx)
 
 def train_epoch(model, loader, criterion, optimizer, scaler, device):
+    """Runs one training epoch and returns average loss and accuracy."""
     model.train()
     total, correct, running_loss = 0, 0, 0
     loop = tqdm(loader, desc="Training", leave=True)
@@ -50,6 +54,7 @@ def train_epoch(model, loader, criterion, optimizer, scaler, device):
     return running_loss / total, 100.*correct/total
 
 def validate(model, loader, criterion, device):
+    """Runs validation epoch and returns average loss and accuracy."""
     model.eval()
     total, correct, running_loss = 0, 0, 0
     with torch.no_grad(), torch.amp.autocast('cuda'): #type: ignore
@@ -66,6 +71,7 @@ def validate(model, loader, criterion, device):
     return running_loss / total, 100.*correct/total
 
 def plot_metrics(train_losses, val_losses, lrs, save_dir):
+    """Plotting helper"""
     epochs = range(1, len(train_losses)+1)
 
     plt.figure(figsize=(8,5))
@@ -92,10 +98,12 @@ def plot_metrics(train_losses, val_losses, lrs, save_dir):
     plt.close()
 
 def main():
+    """Runs full train of ConvNeXt, saves best model, and plots metrics."""
     args = parse_args()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(args.save_dir, exist_ok=True)
 
+    # Deafault hyperparameters
     batch_size = 32
     epochs = 50
     learning_rate = 4e-4
@@ -110,6 +118,7 @@ def main():
     train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True, num_workers=6)
     val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False, num_workers=6)
 
+    # Initialize
     model = custom_small(drop_path_rate=drop_path_rate, classifier_dropout=classifier_dropout).to(device)
     criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -119,6 +128,7 @@ def main():
     best_acc = 0.0
     train_losses, val_losses, lrs = [], [], []
 
+    #Training loop
     for epoch in range(epochs):
         print(f"\n===== Epoch {epoch+1}/{epochs} | LR: {optimizer.param_groups[0]['lr']:.6f} =====")
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, scaler, device)
@@ -132,6 +142,7 @@ def main():
         print(f" Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
         print(f" Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%")
 
+        #Save best model checkpoint
         if val_acc > best_acc:
             best_acc = val_acc
             torch.save({'epoch': epoch, 'model_state_dict': model.state_dict()}, os.path.join(args.save_dir, 'best_model.pth'))

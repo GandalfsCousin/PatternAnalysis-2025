@@ -1,3 +1,5 @@
+"""Evaluate a pretrained ConvNeXt model on the ADNI test dataset"""
+
 import argparse
 import numpy as np
 import torch
@@ -10,8 +12,8 @@ from sklearn.metrics import (
 from modules import custom_small
 from dataset import ADNI_Loader, Transforms
 
-
 def parse_args():
+    """Parses command-line arguments for dataset path, batch size, and model checkpoint."""
     parser = argparse.ArgumentParser(description="Evaluate ConvNeXt model on ADNI test set")
     parser.add_argument('--data_root', type=str,
                         default="recognition/convnext_47433117/ADNI/AD_NC",
@@ -24,6 +26,7 @@ def parse_args():
 
 
 def main():
+    """Runs the full evaluation script"""
     args = parse_args()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     class_names = ["AD", "NC"]
@@ -32,13 +35,14 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                              pin_memory=True, num_workers=4)
 
-
+    #Load pretrained model and checkpoint
     model = custom_small().to(device)
     checkpoint = torch.load(args.model_path, map_location=device)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     model.load_state_dict(state_dict)
     model.eval()
 
+    #Run inference on test set
     all_preds, all_labels = [], []
     with torch.no_grad():
         for images, labels in tqdm(test_loader, desc="Evaluating"):
@@ -51,14 +55,14 @@ def main():
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
 
-
+    #Compute overall metrics
     acc = accuracy_score(all_labels, all_preds)
     precision = precision_score(all_labels, all_preds, average='weighted', zero_division=0)
     recall = recall_score(all_labels, all_preds, average='weighted', zero_division=0)
     f1 = f1_score(all_labels, all_preds, average='weighted', zero_division=0)
     cm = confusion_matrix(all_labels, all_preds, labels=[0, 1])
 
-
+    #Compute class-specific metrics for AD
     tp = cm[0, 0]
     fn = cm[0, 1]
     fp = cm[1, 0]
@@ -67,7 +71,7 @@ def main():
     ad_recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
     ad_f1 = 2 * ad_precision * ad_recall / (ad_precision + ad_recall) if (ad_precision + ad_recall) > 0 else 0.0
 
-    # Print results
+    #Print results
     print("\n=== Evaluation Results ===")
     print(f"Classes: {class_names}  (AD=0, NC=1)")
     print(f"Test Accuracy: {acc * 100:.2f}%")
